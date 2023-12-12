@@ -1,27 +1,18 @@
-
-
 // testOpenGL.cpp : extrait SDL/OpenGL application console.
 //
-// 
-//#include <windows.h>
-//#include <iostream>
-//#include <exception>
-//#include <SDL.h>
-//#include <GL/glew.h>
-//#include<math.h>
+#include <windows.h>
+#include <iostream>
+#include <exception>
+#include <SDL.h>
+#include <GL/glew.h>
+
 #include "CDessine.h"
-#include <cmath>
-
 using namespace std;
+
+
 // Obligatoire argv / argc !!!!!
-
-int anglex = 0;
-int angley = 0;
-int anglez = 0;
-
 int main(int argc, char* argv[])
 {
-    CDessine dessin;
     SDL_Window* mafenetre(0);
     SDL_GLContext moncontexteGL(0);
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK) < 0)
@@ -31,10 +22,8 @@ int main(int argc, char* argv[])
     }
     // Window mode MUST include SDL_WINDOW_OPENGL for use with OpenGL.
     try {
-        mafenetre = SDL_CreateWindow("Test SDL/OpenGL (nov.2017 version 1.0)", SDL_WINDOWPOS_CENTERED,
-            SDL_WINDOWPOS_CENTERED, 512, 512, SDL_WINDOW_OPENGL /*| SDL_WINDOW_RESIZABLE*/);
+        mafenetre = SDL_CreateWindow("Test SDL/OpenGL (nov.2017 version 1.0)", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 512, 512, SDL_WINDOW_OPENGL /*| SDL_WINDOW_RESIZABLE*/);
     }
-
     catch (...)
     {
         cout << "Erreur lors de la création de la fenetre SDL" << endl;
@@ -58,16 +47,16 @@ int main(int argc, char* argv[])
     }
     bool continuer = true;
     SDL_Event un_evenement;
-    
-    dessin.config();
-
-    
-    
-    
-    
-    dessin.Forme3D();
+    CDessine dessine;
+#ifdef NIDAQ
+    dessine.config();
+#endif // NIDAQ
 
 
+    dessine.Forme3D();
+    int anglex = 0;
+    int angley = 0;
+    int anglez = 0;
 
     while (continuer)
     {
@@ -77,53 +66,49 @@ int main(int argc, char* argv[])
         else
             continuer = true;
         // Nettoyage fentre
-        /* glClear(GL_COLOR_BUFFER_BIT);
-        glPointSize(1);*/
-        glColor3f(0, 1, 0);
+        glClear(GL_COLOR_BUFFER_BIT);
+        // TODO : dessiner dans la fenêtre SDL/OpenGL
 
-        for (int i = 0; i < Ligne3D.size(); i++)
-        {
-            dessin.rotationPoint3D(Ligne3D.at(i).x, Ligne3D.at(i).y, Ligne3D.at(i).z, angleX, angleY, angleZ);
+
+        /*dessine.db_ligne(-128, -128, -128, 128);
+        dessine.db_ligne(-128, 128,128, 128);
+        dessine.db_ligne(128, 128, 128, -128);
+        dessine.db_ligne(128, -128, -128, -128);*/
+        dessine.dessineUnObjet3D(anglex, angley, anglez);
+        switch (un_evenement.type) {
+        case SDL_KEYDOWN:
+            switch (un_evenement.key.keysym.sym) {
+            case SDLK_LEFT:
+                angley = angley - 1;
+                if (angley < 0) {
+                    angley = 360;
+                }
+                break;
+
+            case SDLK_RIGHT:
+                angley = angley + 1;
+                if (angley > 360) {
+                    angley = 0;
+                }
+                break;
+            case SDLK_UP:
+                anglex = anglex - 1;
+                if (anglex < 0) {
+                    anglex = 360;
+                }
+                break;
+            case SDLK_DOWN:
+                anglex = anglex + 1;
+                if (anglex > 360) {
+                    anglex = 0;
+                }
+                break;
+            default:
+                break;
+            }
         }
 
 
-
-        //dessin.db_ligne(-128, 0, 0, 200);
-        //dessin.db_ligne(0, 200, 128, 0);
-        //dessin.db_ligne(128, 0, 0, -200);
-        //dessin.db_ligne(0, -200, -128, 0);
-        ////diagonale
-        //dessin.db_ligne(-128, 0, 128, 0);  
-        //dessin.db_ligne(0, 200, 0, -200);  
-        //dessin.dessineUnObjet3D(0, 0, 0);
-        
-
-       
-
-
-
-         // Dessiner le cube après rotation
-
-        // Remettez les angles de rotation à zéro pour éviter une rotation continue
-        /*dessin.db_ligne(-128, -128, 128, -128);
-        dessin.db_ligne(128, -128, 128, 128);
-        dessin.db_ligne(128, 128, -128, 128);
-        dessin.db_ligne(-128, 128, -128, -128);*/
-
-        //glEnable(GL_POINT_SMOOTH);
-        //glPointSize(50);
-        //glColor3f(0, 1, 0);
-        //glBegin(GL_POINTS);
-        //{
-        //    //glVertex2i(0, 0); glVertex2i(0, 1);
-        //    glVertex2i(0, 0); glVertex2i(0, 0);
-        //    //glVertex2i(0, 0); glVertex3i(0, 0, 1);
-
-
-        //}
-        //glEnd();
-
-        // TODO : dessiner dans la fenêtre SDL/OpenGL
         // actualisation de la fenetre
         SDL_GL_SwapWindow(mafenetre);
     }

@@ -1,99 +1,27 @@
-#include "CDessine.h"
+#include <windows.h>
 #include <vector>
+#include <iostream>
+#include <exception>
+#include <SDL.h>
+#include <GL/glew.h>
+#include "CDessine.h"
+#include "NIDAQmx.h"
 using namespace std;
 
 int error = 0;
-float64 dataX[1]; // Data contains a single voltage channel x
-float64 dataY[1]; // Data contains a single voltage channel y
+float64 datax[1]; // Data contains a single voltage channel x
+float64 datay[1]; // Data contains a single voltage channel y
 TaskHandle taskHandleX;
 TaskHandle taskHandleY;
-CDessine::CDessine()
-{
-}
-
-CDessine::~CDessine()
-{
-}
-
-void CDessine::dessineUnObjet3D(int pAngleX, int pAngleY, int pAngleZ)
-{
-    double nx, ny, nz, nx2, ny2, nz2;
-    for (int i = 0; i < Ligne3D.size(); i++)
-    {
-        rotationPoint3D(nx, ny, nz, Ligne3D.at(i).x, Ligne3D.at(i).y, Ligne3D.at(i).z, pAngleX, pAngleY, pAngleZ);
-        rotationPoint3D(nx2, ny2, nz2, Ligne3D.at(i).x2, Ligne3D.at(i).y2, Ligne3D.at(i).z2, pAngleX, pAngleY, pAngleZ);
-        db_ligne(nx, ny, nx2, ny2);
-    }
-}
 
 
-void CDessine::point2D(int x, int y)
+void CDessine::point2D(int px, int py) //methode qui permet d'afficher un point
 {
- 
-    // Dessiner le point
+    glPointSize(1.5);
+    glColor3f(0, 1, 0);
     glBegin(GL_POINTS);
-    glVertex2f(x/256.0, y/256.0);
+    glVertex2f(px / 256.0, py / 256.0);
     glEnd();
-    glFlush();
-}
-
-void CDessine::rotationPoint3D(double& x, double& y, double& z, double alpha, double beta, double gamma)
-{
-
-    // Conversion des angles en radians
-    double alpha_rad = alpha * (M_PI / 180.0);
-    double beta_rad = beta * (M_PI / 180.0);
-    double gamma_rad = gamma * (M_PI / 180.0);
-
-    // Calcul des nouvelles coordonnées
-    double newX = x * (cos(beta_rad) * cos(gamma_rad)) + y * (-cos(beta_rad) * sin(gamma_rad)) + z * (sin(beta_rad));
-    double newY = x * (sin(gamma_rad) * sin(beta_rad) * cos(alpha_rad) + cos(gamma_rad) * sin(alpha_rad)) +
-        y * (-sin(alpha_rad) * sin(beta_rad) * sin(gamma_rad) + cos(alpha_rad) * cos(gamma_rad)) +
-        z * (-cos(beta_rad) * sin(gamma_rad));
-    double newZ = x * (-cos(gamma_rad) * sin(beta_rad) * cos(alpha_rad) + sin(gamma_rad) * sin(alpha_rad)) +
-        y * (sin(alpha_rad) * cos(gamma_rad) * sin(beta_rad) + sin(gamma_rad) * cos(alpha_rad)) +
-        z * (cos(gamma_rad) * cos(beta_rad));
-
-    // Mettre à jour les coordonnées
-    x = newX;
-    y = newY;
-    z = newZ;
-
-}
-struct LigneEspace {
-    double x;
-    double y;
-    double z;
-    double x2;
-    double y2;
-    double z2;
-};
-
-void CDessine::Forme3D()
-{
-    
-
-    //face avant
-    Ligne3D.push_back({ -50,50,0,  50,50,0 });
-    Ligne3D.push_back({ 50,50,0,   50,-50,0 });
-    Ligne3D.push_back({ 50,-50,0,  -50,-50,0 });
-    Ligne3D.push_back({ -50,-50,0,  -50,50,0 });
-    //face arriere
-    Ligne3D.push_back({ 0,0,0,0,100,50 });
-    Ligne3D.push_back({ 0,100,0,100,100,50 });
-    Ligne3D.push_back({ 100,100,0,100,0,50 });
-    Ligne3D.push_back({ 100,0,0,0,0,50 });
-
-    //diagonales
-    Ligne3D.push_back({ -50,50,0,0,100,50 });
-    Ligne3D.push_back({ 50,50,0,100,100,50 });
-    Ligne3D.push_back({ 50,-50,0,100,0,50 });
-    Ligne3D.push_back({ -50,-50,0,0,0,50 });
-
-}
-
-void CDessine::db_point()
-{
 }
 
 void CDessine::db_ligne(int x1, int y1, int x3, int y3)
@@ -102,32 +30,25 @@ void CDessine::db_ligne(int x1, int y1, int x3, int y3)
     int dx, dy;
     int pasx, pasy;
     int e;
-   
+    // Initialisation
     dx = x3 - x1;
     dy = y3 - y1;
     x2 = x1;
     y2 = y1;
-
-    if (dx < 0){
-        dx = -dx; 
-        pasx = -1;
-    }
-    else 
-        pasx = 1;
-   
-    if (dy < 0) {
-        dy = -dy; 
-        pasy = -1;
-    }
-    else 
-        pasy = 1;
-    if (dy == 0) 
-        e = -1; 
-    else 
-        e = 0;
+    // initialisation de dx et pasx
+    if (dx < 0) { dx = -dx; pasx = -1; }
+    else pasx = 1;
+    // initialisation de dy et pasy
+    if (dy < 0) { dy = -dy; pasy = -1; }
+    else pasy = 1;
+    if (dy == 0) e = -1; else e = 0;
     while ((x2 != x3) || (y2 != y3)) {
+#ifdef NIDAQ
+        pointDaQ(x2, y2);
+#endif // NIDAQ
+
+
         point2D(x2, y2);
-        placerPoint(x2, y2);
         if (e >= 0) {
             y2 = y2 + pasy;
             e = e - dx;
@@ -139,26 +60,66 @@ void CDessine::db_ligne(int x1, int y1, int x3, int y3)
     }
 }
 
-void CDessine::db_dessine2D()
+struct LigneEspace {
+    double x;
+    double y;
+    double z;
+    double x2;
+    double y2;
+    double z2;
+};
+void CDessine::Forme3D(void)
 {
+    //face avant
+    Ligne3D.push_back({ -50,50,-50,  50,50,-50 });
+    Ligne3D.push_back({ 50,50,-50,   50,-50,-50 });
+    Ligne3D.push_back({ 50,-50,-50,  -50,-50,-50 });
+    Ligne3D.push_back({ -50,-50,-50,  -50,50,-50 });
+    //face arriere
+    Ligne3D.push_back({ -50,50,50,  50,50,50 });
+    Ligne3D.push_back({ 50,50,50,   50,-50,50 });
+    Ligne3D.push_back({ 50,-50,50,  -50,-50,50 });
+    Ligne3D.push_back({ -50,-50,50,  -50,50,50 });
+
+    //diagonales
+    Ligne3D.push_back({ -50,50,-50,    -50,50,50 });
+    Ligne3D.push_back({ 50,50,-50,       50,50,50 });
+    Ligne3D.push_back({ 50,-50,-50,      50,-50,50 });
+    Ligne3D.push_back({ -50,-50,-50,   -50,-50,50 });
+
+
 }
 
-void CDessine::placerPoint(double x, double y)
+void CDessine::dessineUnObjet3D(int pAngleX, int pAngleY, int pAngleZ)
 {
-    dataX[0] = x * 0.019; // 2 volts
-    error = DAQmxWriteAnalogF64(taskHandleX, 1, 1, 10.0, DAQmx_Val_GroupByChannel, dataX, NULL, NULL);
-    if (DAQmxFailed(error)) {
-        throw "Erreur writeAnalogF64 X";
+    double nx, ny, nz, nx2, ny2, nz2;
+    for (int i = 0; i < Ligne3D.size(); i++)
+    {
+        Rotationpoint3D(nx, ny, nz, Ligne3D.at(i).x, Ligne3D.at(i).y, Ligne3D.at(i).z, pAngleX, pAngleY, pAngleZ);
+        Rotationpoint3D(nx2, ny2, nz2, Ligne3D.at(i).x2, Ligne3D.at(i).y2, Ligne3D.at(i).z2, pAngleX, pAngleY, pAngleZ);
+        db_ligne(nx, ny, nx2, ny2);
     }
-    dataY[0] = y * 0.019; // 2 volts
-    error = DAQmxWriteAnalogF64(taskHandleY, 1, 1, 10.0, DAQmx_Val_GroupByChannel, dataY, NULL, NULL);
-    if (DAQmxFailed(error)) {
-        throw "Erreur writeAnalogF64 Y";
-    }
+
+
+
+}
+
+void CDessine::Rotationpoint3D(double& nx, double& ny, double& nz, double ax, double ay, double az, double alpha, double beta, double gamma)
+{
+    alpha = alpha * 3.14 / 180;
+    beta = beta * 3.14 / 180;
+    gamma = gamma * 3.14 / 180;
+
+
+    nx = ax * (cos(beta) * cos(alpha)) + ay * (-cos(beta) * sin(alpha)) + az * (sin(beta));
+    ny = ax * (sin(gamma) * sin(beta) * cos(alpha) + cos(gamma) * sin(alpha)) + ay * (-sin(alpha) * sin(gamma) * sin(beta) + cos(alpha) * cos(gamma)) + az * (-cos(beta) * sin(gamma));
+    nz = ax * (-cos(gamma) * sin(beta) * cos(alpha) + sin(gamma) * sin(alpha)) + ay * (sin(alpha) * cos(gamma) * sin(beta) + sin(gamma) * cos(alpha)) + az * (cos(gamma) * cos(beta));
 }
 
 void CDessine::config(void)
 {
+#ifdef NIDAQ
+
     try {
         /*********************************************/
         // DAQmx Configure Code
@@ -234,4 +195,22 @@ void CDessine::config(void)
         }
 
     }
+#endif // DEBUG
+}
+
+void CDessine::pointDaQ(int px, int py)
+{
+#ifdef NIDAQ
+
+    datax[0] = px * 0.019; // 2 volts
+    error = DAQmxWriteAnalogF64(taskHandleX, 1, 1, 10.0, DAQmx_Val_GroupByChannel, datax, NULL, NULL);
+    if (DAQmxFailed(error)) {
+        throw "Erreur writeAnalogF64 X";
+    }
+    datay[0] = py * 0.019; // 2 volts
+    error = DAQmxWriteAnalogF64(taskHandleY, 1, 1, 10.0, DAQmx_Val_GroupByChannel, datay, NULL, NULL);
+    if (DAQmxFailed(error)) {
+        throw "Erreur writeAnalogF64 Y";
+    }
+#endif // 
 }
